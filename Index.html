@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agra Campaign — Ad Scheduling Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #0d0d0d;
+  --bg2: #141414;
+  --bg3: #1c1c1c;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #f0ede8;
+  --muted: #7a7672;
+  --accent: #c8f04a;
+  --accent2: #4a9cf0;
+  --red: #f04a4a;
+  --green: #4af09a;
+  --amber: #f0b84a;
+  --card-r: 14px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* NAV */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(13,13,13,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 52px;
+}
+.nav-brand { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.nav-links { display: flex; gap: 28px; }
+.nav-links a { font-size: 12px; color: var(--muted); text-decoration: none; letter-spacing: 0.04em; transition: color 0.2s; }
+.nav-links a:hover { color: var(--text); }
+.nav-date { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+
+/* HERO */
+.hero {
+  padding: 72px 32px 56px;
+  max-width: 1100px; margin: 0 auto;
+  border-bottom: 1px solid var(--border);
+}
+.hero-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; color: var(--accent);
+  letter-spacing: 0.14em; text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-eyebrow::after { content: ''; flex: 1; height: 1px; background: var(--accent); opacity: 0.3; }
+.hero h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(36px, 5vw, 60px);
+  font-weight: 800; line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin-bottom: 20px;
+}
+.hero h1 span { color: var(--accent); }
+.hero-sub {
+  font-size: 15px; color: var(--muted); max-width: 560px; line-height: 1.7;
+  margin-bottom: 40px;
+}
+.hero-meta {
+  display: flex; gap: 32px; flex-wrap: wrap;
+}
+.hero-meta-item { }
+.hero-meta-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+.hero-meta-value { font-size: 13px; color: var(--text); }
+
+/* VERDICT BANNER */
+.verdict {
+  max-width: 1100px; margin: 0 auto;
+  padding: 24px 32px;
+  display: flex; align-items: center; gap: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.verdict-badge {
+  background: var(--accent);
+  color: #0d0d0d;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700; font-size: 11px;
+  padding: 6px 14px; border-radius: 100px;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+.verdict-text { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.verdict-text strong { color: var(--text); }
+
+/* CONTENT */
+.content { max-width: 1100px; margin: 0 auto; padding: 0 32px 80px; }
+
+/* SECTION */
+.section { padding: 56px 0 0; }
+.section-header {
+  display: flex; align-items: baseline; gap: 16px;
+  margin-bottom: 32px;
+}
+.section-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; color: var(--accent);
+  letter-spacing: 0.1em;
+}
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px; font-weight: 700;
+}
+.section-desc { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.7; max-width: 620px; }
+
+/* METRIC CARDS */
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+.metric {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--card-r);
+  padding: 20px;
+  position: relative; overflow: hidden;
+}
+.metric::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.metric.green::before { background: var(--green); }
+.metric.red::before { background: var(--red); }
+.metric.amber::before { background: var(--amber); }
+.metric.accent::before { background: var(--accent); }
+.metric-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+.metric-val { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
+.metric-delta { font-size: 12px; display: flex; align-items: center; gap: 4px; }
+.metric-delta.up { color: var(--green); }
+.metric-delta.down { color: var(--red); }
+.metric-delta.neutral { color: var(--muted); }
+
+/* CHART CARD */
+.chart-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--card-r);
+  padding: 28px;
+  margin-bottom: 16px;
+}
+.chart-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
+.chart-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 600; }
+.chart-subtitle { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.legend { display: flex; gap: 16px; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+.legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+.chart-wrap { position: relative; width: 100%; }
+
+/* INSIGHT BOX */
+.insight {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--card-r);
+  padding: 20px 22px;
+  margin-bottom: 0;
+  display: flex; gap: 16px; align-items: flex-start;
+}
+.insight-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; flex-shrink: 0; margin-top: 1px;
+}
+.insight-icon.g { background: rgba(74,240,154,0.12); }
+.insight-icon.a { background: rgba(240,184,74,0.12); }
+.insight-icon.b { background: rgba(74,156,240,0.12); }
+.insight-body { }
+.insight-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+.insight-text { font-size: 13px; color: var(--text); line-height: 1.65; }
+.insight-text strong { color: var(--accent); }
+
+/* GRID 2 */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+/* DELTA TABLE */
+.delta-table { width: 100%; border-collapse: collapse; }
+.delta-table th {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
+  text-align: left; padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.delta-table td {
+  padding: 12px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+.delta-table tr:last-child td { border-bottom: none; }
+.delta-table .name-col { color: var(--text); }
+.delta-table .num { font-family: 'DM Mono', monospace; font-size: 12px; text-align: right; }
+.delta-table .pos { color: var(--green); }
+.delta-table .neg { color: var(--red); }
+.delta-table .hl { background: rgba(200,240,74,0.05); }
+
+/* SIGNAL CARDS */
+.signals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 28px; }
+.signal-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--card-r); padding: 20px;
+}
+.signal-tag {
+  display: inline-block;
+  font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500;
+  padding: 3px 10px; border-radius: 100px;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+.signal-tag.primary { background: rgba(200,240,74,0.15); color: var(--accent); }
+.signal-tag.supporting { background: rgba(74,156,240,0.15); color: var(--accent2); }
+.signal-tag.minor { background: rgba(122,118,114,0.15); color: var(--muted); }
+.signal-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.signal-body { font-size: 12px; color: var(--muted); line-height: 1.65; }
+.signal-body strong { color: var(--text); }
+
+/* CONCLUSION BLOCK */
+.conclusion-block {
+  background: linear-gradient(135deg, rgba(200,240,74,0.06) 0%, rgba(74,240,154,0.04) 100%);
+  border: 1px solid rgba(200,240,74,0.2);
+  border-radius: 20px;
+  padding: 40px;
+  margin-top: 56px;
+}
+.conclusion-block h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: 26px; font-weight: 800;
+  margin-bottom: 8px; line-height: 1.2;
+}
+.conclusion-block h2 span { color: var(--accent); }
+.conclusion-sub { font-size: 14px; color: var(--muted); margin-bottom: 32px; }
+.hypothesis-row {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 16px 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.hypothesis-row:first-of-type { border-top: none; }
+.h-num {
+  font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent);
+  background: rgba(200,240,74,0.1); border-radius: 4px;
+  padding: 2px 8px; flex-shrink: 0; margin-top: 2px;
+}
+.h-content { }
+.h-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+.h-body { font-size: 13px; color: var(--muted); line-height: 1.65; }
+.h-body strong { color: var(--text); }
+.verdict-final {
+  margin-top: 32px;
+  padding: 20px 24px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.verdict-final-text {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px; font-weight: 700;
+  color: #0d0d0d;
+}
+.verdict-final-sub { font-size: 12px; color: rgba(0,0,0,0.6); margin-top: 3px; }
+
+/* DIVIDER */
+.divider { height: 1px; background: var(--border); margin: 0 0 0; }
+
+/* FOOTER */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 28px 32px;
+  max-width: 1100px; margin: 0 auto;
+  display: flex; justify-content: space-between; align-items: center;
+}
+footer p { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+
+@media (max-width: 700px) {
+  .metrics { grid-template-columns: 1fr 1fr; }
+  .grid2, .grid3, .signals { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 32px; }
+  nav { padding: 0 16px; }
+  .content, .hero, .verdict { padding-left: 16px; padding-right: 16px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">Agra · Ad Scheduling</div>
+  <div class="nav-links">
+    <a href="#overall">Overall</a>
+    <a href="#placement">Placement</a>
+    <a href="#ads">Ads</a>
+    <a href="#creative">Creative</a>
+    <a href="#conclusion">Verdict</a>
+  </div>
+  <div class="nav-date">27 Apr – 4 May 2025</div>
+</nav>
+
+<div class="hero">
+  <div class="hero-eyebrow">Meta Ads · Agra Campaign · Early Signal Report</div>
+  <h1>Did Ad Scheduling<br>Move the <span>CPI Needle?</span></h1>
+  <div class="hero-sub">Ad Scheduling went live in Agra on 27th April. CPI dropped 35% in the post period. This report breaks down whether that improvement is from scheduling — or other shifts happening simultaneously.</div>
+  <div class="hero-meta">
+    <div class="hero-meta-item">
+      <div class="hero-meta-label">Pre Period</div>
+      <div class="hero-meta-value">20–27 April</div>
+    </div>
+    <div class="hero-meta-item">
+      <div class="hero-meta-label">Post Period</div>
+      <div class="hero-meta-value">28 Apr – 4 May</div>
+    </div>
+    <div class="hero-meta-item">
+      <div class="hero-meta-label">Also Live In</div>
+      <div class="hero-meta-value">Aurangabad, Bhopal, Varanasi</div>
+    </div>
+    <div class="hero-meta-item">
+      <div class="hero-meta-label">Headline CPI Move</div>
+      <div class="hero-meta-value" style="color:var(--green)">₹88 → ₹58 &nbsp;(−35%)</div>
+    </div>
+  </div>
+</div>
+
+<div class="verdict">
+  <div class="verdict-badge">Verdict</div>
+  <div class="verdict-text"><strong>Ad Scheduling is the primary driver.</strong> Two supporting factors — spend consolidation on the top ad, and a minor placement shift — are also at play. The clearest signal: Install Rate of the same creative nearly doubled (3.97% → 7.22%) with fewer clicks. That's not an ad shift. That's audience quality.</div>
+</div>
+
+<div class="content">
+
+  <!-- SECTION 1: OVERALL -->
+  <div class="section" id="overall">
+    <div class="section-header">
+      <div>
+        <div class="section-num">01 — OVERALL NUMBERS</div>
+        <div class="section-title">Campaign Level Performance</div>
+        <div class="section-desc">Cost came down 27%, but the key story is installs going up while spend dropped. CPI improved 35% — we spent less and got more.</div>
+      </div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric red">
+        <div class="metric-label">Cost</div>
+        <div class="metric-val">₹2,764</div>
+        <div class="metric-delta down">↓ 27% vs ₹3,786</div>
+      </div>
+      <div class="metric green">
+        <div class="metric-label">CPI</div>
+        <div class="metric-val">₹58</div>
+        <div class="metric-delta up">↓ 35% vs ₹88</div>
+      </div>
+      <div class="metric green">
+        <div class="metric-label">Installs</div>
+        <div class="metric-val">48</div>
+        <div class="metric-delta up">↑ 12% vs 43</div>
+      </div>
+      <div class="metric green">
+        <div class="metric-label">Install Rate</div>
+        <div class="metric-val">6.27%</div>
+        <div class="metric-delta up">↑ from 4.95%</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-top">
+        <div>
+          <div class="chart-title">Pre vs Post — Key Metrics</div>
+          <div class="chart-subtitle">CPI (₹), Clicks, Installs</div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#4a9cf0"></div>Pre (20–27 Apr)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#c8f04a"></div>Post (28 Apr–4 May)</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:240px">
+        <canvas id="overallChart" role="img" aria-label="Bar chart comparing pre and post CPI clicks and installs">Pre CPI 88, Post CPI 58. Pre Installs 43, Post 48. Pre Clicks 868, Post 766.</canvas>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top:12px">
+      <div class="insight">
+        <div class="insight-icon g">📉</div>
+        <div class="insight-body">
+          <div class="insight-label">CPI Movement</div>
+          <div class="insight-text">Cost dropped 27% but installs went up 12%. That means <strong>efficiency improved on both sides</strong> — not just cheaper clicks, but higher conversion.</div>
+        </div>
+      </div>
+      <div class="insight">
+        <div class="insight-icon a">⚠️</div>
+        <div class="insight-body">
+          <div class="insight-label">Confounders Present</div>
+          <div class="insight-text">There are <strong>two simultaneous shifts</strong> — placement mix and ad spend consolidation — running alongside scheduling. We need to separate them.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: PLACEMENT -->
+  <div class="section" id="placement">
+    <div class="section-header">
+      <div>
+        <div class="section-num">02 — PLACEMENT LEVEL</div>
+        <div class="section-title">Spend Share Shift by Placement</div>
+        <div class="section-desc">Where did Meta route the budget? A 5pp shift from Facebook Reels to Feed is the notable move at campaign level.</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-top">
+        <div>
+          <div class="chart-title">Placement Spend Share — Pre vs Post</div>
+          <div class="chart-subtitle">% of total campaign spend</div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#4a9cf0"></div>Pre</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#c8f04a"></div>Post</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:280px">
+        <canvas id="placementChart" role="img" aria-label="Horizontal bar chart of placement spend share">Feed up 5pp. Facebook Reels down 4pp.</canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-top">
+        <div>
+          <div class="chart-title">PP Change by Placement</div>
+          <div class="chart-subtitle">Positive = spend shifted in, Negative = shifted out</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="placementDeltaChart" role="img" aria-label="Bar chart of placement PP change">Feed +5pp, Facebook Reels -4pp.</canvas>
+      </div>
+    </div>
+
+    <div class="insight" style="margin-top:0">
+      <div class="insight-icon b">📊</div>
+      <div class="insight-body">
+        <div class="insight-label">What This Means</div>
+        <div class="insight-text">Feed share up +5pp, Reels down -4pp. Feed tends to have a more browse-intent audience. This shift is a <strong>minor supporting factor</strong> — but it doesn't explain the magnitude of CPI improvement on its own. We need to look at the ad level.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: AD LEVEL -->
+  <div class="section" id="ads">
+    <div class="section-header">
+      <div>
+        <div class="section-num">03 — AD LEVEL</div>
+        <div class="section-title">Spend Concentration Shift</div>
+        <div class="section-desc">In the pre period, 2 ads were splitting the budget. In the post period, Meta concentrated almost all spend on a single ad.</div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="chart-card" style="margin-bottom:0">
+        <div class="chart-top">
+          <div>
+            <div class="chart-title">Pre Period — Ad Share</div>
+            <div class="chart-subtitle">Split across 2 main ads</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:220px">
+          <canvas id="adPiePreChart" role="img" aria-label="Pie chart of ad spend share pre period">Budget Static 69.94%, NewCreatives 2W1 23.59%, others 6.47%.</canvas>
+        </div>
+      </div>
+      <div class="chart-card" style="margin-bottom:0">
+        <div class="chart-top">
+          <div>
+            <div class="chart-title">Post Period — Ad Share</div>
+            <div class="chart-subtitle">Consolidated on 1 ad</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:220px">
+          <canvas id="adPiePostChart" role="img" aria-label="Pie chart of ad spend share post period">Budget Static 84.37%, NewCreatives 2W2 8.57%, others 7.06%.</canvas>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px">
+      <div class="chart-card">
+        <div class="chart-top">
+          <div>
+            <div class="chart-title">Ad Spend Share — Pre vs Post</div>
+            <div class="chart-subtitle">% of campaign spend per creative</div>
+          </div>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#4a9cf0"></div>Pre</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#c8f04a"></div>Post</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:260px">
+          <canvas id="adBarChart" role="img" aria-label="Horizontal bar chart of ad spend pre vs post">Budget Static 69.94% to 84.37%. NewCreatives 2W1 dropped 23.59% to 2.13%.</canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <div class="insight-icon a">🎯</div>
+      <div class="insight-body">
+        <div class="insight-label">The Consolidation Effect</div>
+        <div class="insight-text">Budget Static was already the top spender at 70%. Scheduling constrained the delivery window, and Meta's algorithm doubled down on the historically best performer — pushing it to <strong>84%</strong> of all spend. This consolidation contributes to blended CPI improvement, but it doesn't explain the within-ad performance jump. That comes next.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 4: CREATIVE PERFORMANCE -->
+  <div class="section" id="creative">
+    <div class="section-header">
+      <div>
+        <div class="section-num">04 — TOP CREATIVE DEEP DIVE</div>
+        <div class="section-title">Agra – 3% LAL BS – Static – Budget</div>
+        <div class="section-desc">The smoking gun. Same creative, same placements — but the conversion rate nearly doubled. This is the key signal for scheduling impact.</div>
+      </div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric green">
+        <div class="metric-label">CPI (post)</div>
+        <div class="metric-val">₹56</div>
+        <div class="metric-delta up">↓ 41% vs ₹95</div>
+      </div>
+      <div class="metric green">
+        <div class="metric-label">Installs</div>
+        <div class="metric-val">42</div>
+        <div class="metric-delta up">↑ 50% vs 28</div>
+      </div>
+      <div class="metric green">
+        <div class="metric-label">Install Rate</div>
+        <div class="metric-val">7.22%</div>
+        <div class="metric-delta up">↑ from 3.97%</div>
+      </div>
+      <div class="metric red">
+        <div class="metric-label">Clicks</div>
+        <div class="metric-val">582</div>
+        <div class="metric-delta down">↓ 17% vs 705</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-top">
+        <div>
+          <div class="chart-title">Creative Performance — Pre vs Post</div>
+          <div class="chart-subtitle">CPI (₹), Installs, Install Rate (%)</div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#4a9cf0"></div>Pre</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#c8f04a"></div>Post</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:240px">
+        <canvas id="creativeChart" role="img" aria-label="Bar chart of creative CPI installs and install rate">CPI dropped 95 to 56. Installs up 28 to 42. Install rate 3.97% to 7.22%.</canvas>
+      </div>
+    </div>
+
+    <!-- KEY SIGNAL BOX -->
+    <div style="background: rgba(200,240,74,0.06); border: 1px solid rgba(200,240,74,0.2); border-radius: 12px; padding: 24px 28px; margin: 12px 0;">
+      <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:12px;">Key Signal</div>
+      <div style="font-family:'Syne',sans-serif; font-size:18px; font-weight:700; line-height:1.3; margin-bottom:10px;">
+        Fewer clicks, more installs. Install Rate went <span style="color:var(--green)">3.97% → 7.22%</span>.
+      </div>
+      <div style="font-size:13px; color:var(--muted); line-height:1.7;">
+        This means the people seeing the ad during scheduled hours are converting at nearly <strong style="color:var(--text)">2× the rate</strong> — not because we targeted more, but because the <em>timing</em> improved audience quality. Clicks fell 17% but installs rose 50%. That relationship only makes sense if the audience changed.
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-top">
+        <div>
+          <div class="chart-title">Placement Split — Within Budget Static Ad</div>
+          <div class="chart-subtitle">Not a major change — shift is minor (±3-4pp max)</div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#4a9cf0"></div>Pre</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#c8f04a"></div>Post</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:240px">
+        <canvas id="adPlacementChart" role="img" aria-label="Horizontal bar chart of placement split within top ad">Instagram Reels up 3.64pp. Feed down 3.04pp.</canvas>
+      </div>
+    </div>
+
+    <div class="insight">
+      <div class="insight-icon b">🔍</div>
+      <div class="insight-body">
+        <div class="insight-label">Within-Ad Placement Check</div>
+        <div class="insight-text">Instagram Reels is up <strong>+3.64pp</strong>, Feed and Stories each down ~3pp within this ad. The placement shift at ad level is minimal and <strong>cannot explain a 41% CPI drop</strong>. We're looking at the right thing: it's the scheduling window, not placement.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONCLUSION -->
+  <div class="conclusion-block" id="conclusion">
+    <div style="font-family:'DM Mono',monospace; font-size:11px; color:var(--accent); text-transform:uppercase; letter-spacing:0.12em; margin-bottom:12px;">05 — Verdict</div>
+    <h2>Yes, Scheduling is <span>Working</span>.<br>Here's the Evidence.</h2>
+    <div class="conclusion-sub">Three factors explain the CPI improvement. Only one of them is scheduling — but it's the dominant one.</div>
+
+    <div class="hypothesis-row">
+      <div class="h-num">01</div>
+      <div class="h-content">
+        <div class="h-title">Ad Scheduling — Primary Driver</div>
+        <div class="h-body">The same creative went from <strong>3.97% → 7.22%</strong> Install Rate with fewer clicks. This is the strongest signal. You can't explain that through ad mix or placement shift — the underlying audience quality changed. Scheduling is restricting delivery to hours when users are more likely to act, not just browse. That's why installs went up 50% while clicks went down 17%.</div>
+      </div>
+    </div>
+
+    <div class="hypothesis-row">
+      <div class="h-num">02</div>
+      <div class="h-content">
+        <div class="h-title">Ad Spend Consolidation — Supporting Factor</div>
+        <div class="h-body">Spend shifted from 2 ads (70/23 split) to 1 ad (84%). When budget consolidates on the best performer, blended CPI improves. This is a <strong>secondary contributor</strong> — it explains part of the campaign-level improvement but not the creative-level conversion jump.</div>
+      </div>
+    </div>
+
+    <div class="hypothesis-row">
+      <div class="h-num">03</div>
+      <div class="h-content">
+        <div class="h-title">Placement Mix Shift — Minor Factor</div>
+        <div class="h-body">Feed up 5pp at campaign level. Within the top ad, placement movement is ±3-4pp max. <strong>Not a significant driver.</strong> Even if Feed converts better than Reels, a 5pp shift doesn't produce a 35% CPI drop. Correlation, not causation.</div>
+      </div>
+    </div>
+
+    <div class="verdict-final">
+      <div>
+        <div class="verdict-final-text">Ad Scheduling is the primary driver. Continue monitoring Aurangabad, Bhopal & Varanasi.</div>
+        <div class="verdict-final-sub">For a clean isolated read → run one scheduled + one non-scheduled campaign in parallel in one city</div>
+      </div>
+      <div style="font-family:'Syne',sans-serif; font-size:32px; font-weight:800; color:#0d0d0d; margin-left:24px; flex-shrink:0;">✓</div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<footer style="max-width:1100px">
+  <p>Agra Campaign · Ad Scheduling Analysis · 27 Apr – 4 May 2025</p>
+  <p>Pre: ₹3,786 spend · Post: ₹2,764 spend</p>
+</footer>
+
+<script>
+const pre = '#4a9cf0';
+const post = '#c8f04a';
+const muted = '#7a7672';
+const grid = 'rgba(255,255,255,0.05)';
+const fontBase = "'DM Sans', sans-serif";
+
+Chart.defaults.color = muted;
+Chart.defaults.font.family = fontBase;
+Chart.defaults.font.size = 11;
+
+const baseOpts = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { grid: { color: grid }, ticks: { color: muted, font: { size: 11 } } },
+    y: { grid: { color: grid }, ticks: { color: muted, font: { size: 11 } } }
+  }
+};
+
+// Overall
+new Chart(document.getElementById('overallChart'), {
+  type: 'bar',
+  data: {
+    labels: ['CPI (₹)', 'Clicks', 'Installs'],
+    datasets: [
+      { label: 'Pre', data: [88, 86.8, 43], backgroundColor: pre },
+      { label: 'Post', data: [58, 76.6, 48], backgroundColor: post }
+    ]
+  },
+  options: { ...baseOpts }
+});
+
+// Placement bar
+new Chart(document.getElementById('placementChart'), {
+  type: 'bar',
+  data: {
+    labels: ['FB Reels', 'FB Stories', 'Feed', 'IG Reels', 'IG Stories', 'In-stream'],
+    datasets: [
+      { label: 'Pre', data: [31.24, 28.89, 21.42, 14.66, 3.04, 0.77], backgroundColor: pre },
+      { label: 'Post', data: [27.21, 27.53, 26.41, 13.39, 4.09, 1.37], backgroundColor: post }
+    ]
+  },
+  options: {
+    ...baseOpts, indexAxis: 'y',
+    scales: {
+      x: { grid: { color: grid }, ticks: { color: muted, font: { size: 11 }, callback: v => v + '%' } },
+      y: { grid: { color: grid }, ticks: { color: muted, font: { size: 11 } } }
+    }
+  }
+});
+
+// Placement delta
+const deltas = [-4.03, -1.36, 5.00, -1.27, 1.05, 0.61];
+const placementLabels = ['FB Reels', 'FB Stories', 'Feed', 'IG Reels', 'IG Stories', 'In-stream'];
+new Chart(document.getElementById('placementDeltaChart'), {
+  type: 'bar',
+  data: {
+    labels: placementLabels,
+    datasets: [{
+      label: 'PP Change',
+      data: deltas,
+      backgroundColor: deltas.map(d => d > 0 ? '#4af09a' : '#f04a4a')
+    }]
+  },
+  options: {
+    ...baseOpts,
+    scales: {
+      x: { grid: { color: grid }, ticks: { color: muted, font: { size: 11 } } },
+      y: { grid: { color: grid }, ticks: { color: muted, font: { size: 11 }, callback: v => v + 'pp' } }
+    }
+  }
+});
+
+// Ad Pie Pre
+new Chart(document.getElementById('adPiePreChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Budget Static', 'NewCreatives 2W1', 'Others'],
+    datasets: [{
+      data: [69.94, 23.59, 6.47],
+      backgroundColor: ['#4a9cf0', '#7a7672', '#2a3a4a'],
+      borderWidth: 0
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true, position: 'bottom', labels: { color: muted, font: { size: 11 }, boxWidth: 10 } }
+    }
+  }
+});
+
+// Ad Pie Post
+new Chart(document.getElementById('adPiePostChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Budget Static', 'NewCreatives 2W2', 'Others'],
+    datasets: [{
+      data: [84.37, 8.57, 7.06],
+      backgroundColor: ['#c8f04a', '#4a9cf0', '#2a3a4a'],
+      borderWidth: 0
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true, position: 'bottom', labels: { color: muted, font: { size: 11 }, boxWidth: 10 } }
+    }
+  }
+});
+
+// Ad Bar
+new Chart(document.getElementById('adBarChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Budget Static', 'NewCreatives 2W1', 'NewCreatives 2W2', 'RajShamani', 'Others'],
+    datasets: [
+      { label: 'Pre', data: [69.94, 23.59, 2.17, 0.13, 4.17], backgroundColor: pre },
+      { label: 'Post', data: [84.37, 2.13, 8.57, 3.11, 1.82], backgroundColor: post }
+    ]
+  },
+  options: {
+    ...baseOpts, indexAxis: 'y',
+    scales: {
+      x: { grid: { color: grid }, ticks: { color: muted, font: { size: 11 }, callback: v => v + '%' } },
+      y: { grid: { color: grid }, ticks: { color: muted, font: { size: 11 } } }
+    }
+  }
+});
+
+// Creative
+new Chart(document.getElementById('creativeChart'), {
+  type: 'bar',
+  data: {
+    labels: ['CPI (₹)', 'Installs', 'Install Rate (%)'],
+    datasets: [
+      { label: 'Pre', data: [95, 28, 3.97], backgroundColor: pre },
+      { label: 'Post', data: [56, 42, 7.22], backgroundColor: post }
+    ]
+  },
+  options: { ...baseOpts }
+});
+
+// Ad placement
+new Chart(document.getElementById('adPlacementChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Feed', 'IG Reels', 'IG Stories', 'FB Reels', 'FB Stories', 'In-stream'],
+    datasets: [
+      { label: 'Pre', data: [31.83, 24.96, 25.64, 14.10, 2.77, 0.70], backgroundColor: pre },
+      { label: 'Post', data: [28.79, 28.60, 22.11, 14.48, 4.57, 1.46], backgroundColor: post }
+    ]
+  },
+  options: {
+    ...baseOpts, indexAxis: 'y',
+    scales: {
+      x: { grid: { color: grid }, ticks: { color: muted, font: { size: 11 }, callback: v => v + '%' } },
+      y: { grid: { color: grid }, ticks: { color: muted, font: { size: 11 } } }
+    }
+  }
+});
+</script>
+</body>
+</html>
